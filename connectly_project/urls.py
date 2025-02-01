@@ -8,4 +8,5 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),  # Token obtain
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),  # Token refresh
     path('api/', include('posts.urls')), 
+    
 ]

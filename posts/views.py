@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate
+
+from factories.post_factory import PostFactory
 from .models import Post, Comment
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
 from .permissions import IsPostAuthor
@@ -115,16 +117,48 @@ class ProtectedView(APIView):
     def get(self, request):
         return Response({"message": "Authenticated!"})
 
-
-# Post Detail View with role-based permission (Only authors can modify their posts)
 class PostDetailView(APIView):
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated, IsPostAuthor]
-
     def get(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
-        self.check_object_permissions(request, post)  # Check if the user is authorized
-        return Response({"content": post.content})
+        try:
+            post = Post.objects.get(pk=pk)
+            serializer = PostSerializer(post)
+            return Response(serializer.data)
+        except Post.DoesNotExist:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Update the existing post
+    def put(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+            serializer = PostSerializer(post, data=request.data)
+            if serializer.is_valid():
+                serializer.save()  # Save the updated post
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Post.DoesNotExist:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Delete the post
+    def delete(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+            post.delete()  # Remove the post
+            return Response({'message': 'Post deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+        except Post.DoesNotExist:
+            return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+class CreatePostView(APIView):
+    def post(self, request):
+        data = request.data
+        try:
+            post = PostFactory.create_post(
+                post_type=data['post_type'],
+                title=data['title'],
+                content=data.get('content', ''),
+                metadata=data.get('metadata', {})
+            )
+            return Response({'message': 'Post created successfully!', 'post_id': post.id}, status=status.HTTP_201_CREATED)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Comment List & Create
