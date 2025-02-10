@@ -75,23 +75,32 @@ class UserLogin(APIView):
 
 # Post List & Create (Requires token authentication)
 class PostListCreate(APIView):
+    """
+    View to list and create posts.
+    Requires the user to be authenticated via token.
+    """
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # Fetch all posts and serialize them
         posts = Post.objects.all()
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data)
 
     def post(self, request):
         author = request.data.get('author')
+        
+        # Validate if the author exists
         if author and not User.objects.filter(id=author).exists():
             return Response({"error": "Author not found."}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Serialize the incoming post data
         serializer = PostSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save()  # Save the new post
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserDetailView(APIView):
@@ -102,6 +111,44 @@ class UserDetailView(APIView):
             return Response(serializer.data)
         except User.DoesNotExist:
             return Response({'detail': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, id):
+        try:
+            user = User.objects.get(id=id)
+            
+            # Get updated fields from request data or use existing values
+            username = request.data.get('username', user.username)
+            email = request.data.get('email', user.email)
+            password = request.data.get('password', None)
+
+            # Update user fields
+            user.username = username
+            user.email = email
+            if password:  # Update password if provided
+                user.set_password(password)
+
+            user.save()
+            serializer = UserSerializer(user)
+
+            # Custom success response
+            return Response(
+                {
+                    'message': 'User updated successfully',
+                    'user': serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, id):
+        try:
+            user = User.objects.get(id=id)
+            user.delete()  # Delete the user
+            return Response({'message': 'User deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         
 class UserListView(APIView):
     def get(self, request):

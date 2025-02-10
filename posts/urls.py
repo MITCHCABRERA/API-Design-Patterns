@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import UserListCreate, PostListCreate, CommentListCreate, PostDetailView, UserCreateAndAssignGroup, UserLogin
+from .views import UserDetailView, UserListCreate, PostListCreate, CommentListCreate, PostDetailView, UserCreateAndAssignGroup, UserLogin
 from . import views
 urlpatterns = [
     path('users/', UserListCreate.as_view(), name='user-list-create'),
@@ -12,4 +12,7 @@ urlpatterns = [
     path('users/<int:id>/', views.UserDetailView.as_view(), name='user-detail'),
     path('posts/<int:post_id>/', PostDetailView.as_view(), name='post-detail'),
     path('posts/<int:pk>/', PostDetailView.as_view(), name='post-detail-update-delete'),
+    path('users/<int:id>/', UserDetailView.as_view(), name='user-detail-update-delete'),
+    path('posts/', PostListCreate.as_view(), name='post-list-create'),
+    path('posts/<int:pk>/', PostDetailView.as_view(), name='post-detail'),
 ]
