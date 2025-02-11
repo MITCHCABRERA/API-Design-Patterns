@@ -6,8 +6,8 @@ from django.contrib.auth.models import User, Group
 from django.contrib.auth import authenticate
 
 from factories.post_factory import PostFactory
-from .models import Post, Comment
-from .serializers import UserSerializer, PostSerializer, CommentSerializer
+from .models import Post, Comment, Like
+from .serializers import UserSerializer, PostSerializer, CommentSerializer, LikeSerializer
 from .permissions import IsPostAuthor
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
@@ -193,6 +193,7 @@ class PostDetailView(APIView):
             return Response({'message': 'Post deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
         except Post.DoesNotExist:
             return Response({'error': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
+
 class CreatePostView(APIView):
     def post(self, request):
         data = request.data
@@ -230,3 +231,23 @@ class CommentListCreate(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Like/Unlike a Post
+class LikePostView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id)
+        like, created = Like.objects.get_or_create(user=request.user, post=post)
+
+        if not created:
+            like.delete()
+            return Response({'message': 'Post unliked successfully'}, status=status.HTTP_200_OK)
+
+        return Response({'message': 'Post liked successfully'}, status=status.HTTP_201_CREATED)
+
+    def get(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id)
+        likes = Like.objects.filter(post=post).count()
+        return Response({'post_id': post_id, 'total_likes': likes}, status=status.HTTP_200_OK)
